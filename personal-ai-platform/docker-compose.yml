@@ -1,0 +1,50 @@
+# =============================================================================
+# Personal AI Platform - Phase 1
+# Chạy trong Docker: Open WebUI (giao diện) + LiteLLM (bộ điều phối AI)
+# Ollama (AI chạy trên máy) được cài trực tiếp trên Windows để dùng GPU dễ hơn.
+# =============================================================================
+name: personal-ai
+
+services:
+  litellm:
+    image: ${LITELLM_IMAGE:-ghcr.io/berriai/litellm:main-stable}
+    container_name: personal-ai-litellm
+    restart: unless-stopped
+    command: ["--config", "/app/config.yaml"]
+    # Chỉ mở cho chính máy Windows (127.0.0.1). KHÔNG đổi thành 0.0.0.0.
+    ports:
+      - "127.0.0.1:4000:4000"
+    volumes:
+      - ./infrastructure/litellm/config.yaml:/app/config.yaml:ro
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Thiếu LITELLM_MASTER_KEY trong file .env}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  open-webui:
+    image: ${OPEN_WEBUI_IMAGE:-ghcr.io/open-webui/open-webui:main}
+    container_name: personal-ai-openwebui
+    restart: unless-stopped
+    depends_on:
+      - litellm
+    # Chỉ mở cho chính máy Windows. Điện thoại truy cập qua Tailscale (xem docs/Install.md).
+    ports:
+      - "127.0.0.1:3000:8080"
+    environment:
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:?Thiếu WEBUI_SECRET_KEY trong file .env}
+      WEBUI_AUTH: "true"
+      ENABLE_SIGNUP: ${ENABLE_SIGNUP:-false}
+      # Tắt kết nối trực tiếp tới Ollama: mọi yêu cầu đi qua LiteLLM để có failover.
+      ENABLE_OLLAMA_API: "false"
+      OPENAI_API_BASE_URL: http://litellm:4000/v1
+      OPENAI_API_KEY: ${LITELLM_MASTER_KEY:?Thiếu LITELLM_MASTER_KEY trong file .env}
+    volumes:
+      - openwebui-data:/app/backend/data
+
+volumes:
+  openwebui-data:
+    name: personal-ai-openwebui-data

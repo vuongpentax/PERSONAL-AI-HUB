@@ -1,0 +1,28 @@
+%% Sơ đồ kiến trúc Personal AI Platform - Phase 1
+%% Xem trực tiếp: dán nội dung vào https://mermaid.live
+flowchart TD
+    subgraph Phone["Điện thoại"]
+        P[Trình duyệt + Tailscale]
+    end
+
+    subgraph PC["Máy Windows 11"]
+        TS[Tailscale tailnet]
+        subgraph Docker["Docker Desktop (WSL2)"]
+            OW[Open WebUI :3000]
+            LL[LiteLLM Gateway :4000]
+        end
+        OL[Ollama GPU :11434]
+    end
+
+    subgraph Cloud["Đám mây miễn phí"]
+        G[Gemini]
+        Q[Groq]
+        R[OpenRouter]
+    end
+
+    P --> TS --> OW
+    OW --> LL
+    LL -->|1| G
+    LL -->|2| Q
+    LL -->|3| R
+    LL -->|4 dự phòng cuối| OL

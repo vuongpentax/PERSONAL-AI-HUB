@@ -1,0 +1,34 @@
+# =============================================================================
+# Danh sách Agent mặc định (Phase 1)
+# Mỗi agent gồm: tên model (LiteLLM sẽ chọn nhà cung cấp) + "system prompt" (hướng dẫn vai trò).
+#
+# Phase 1 dùng cách ĐƠN GIẢN: bạn tự chọn agent trong Open WebUI.
+# Phase 2 có thể thêm bộ tự nhận biết ý định (ví dụ "viết code" -> Coder).
+#
+# Cách tạo agent trong Open WebUI: xem infrastructure/openwebui/README.md
+# =============================================================================
+
+agents:
+  - id: researcher
+    name: Researcher
+    purpose: Tóm tắt tài liệu, tìm nguồn, nghiên cứu
+    model: main                 # Gemini -> Groq -> OpenRouter -> Ollama
+    prompt_file: prompts/researcher.md
+
+  - id: coder
+    name: Coder
+    purpose: Viết code, sửa lỗi, review code
+    model: code                 # Ollama (Qwen Coder) trước, cloud khi Ollama tắt
+    prompt_file: prompts/coder.md
+
+  - id: writer
+    name: Writer
+    purpose: Nội dung, blog, email, bài Facebook
+    model: main
+    prompt_file: prompts/writer.md
+
+  - id: assistant
+    name: Assistant
+    purpose: Chat thông thường, lập kế hoạch
+    model: main
+    prompt_file: prompts/assistant.md
