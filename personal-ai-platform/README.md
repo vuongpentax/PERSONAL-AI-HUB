@@ -27,6 +27,7 @@ Chi tiết và sơ đồ: `docs/Architecture.md` và `diagrams/architecture.mmd`
    powershell -ExecutionPolicy Bypass -File .\scripts\health-check.ps1
    ```
 3. Gặp lỗi: xem **`docs/Troubleshooting.md`**.
+4. Muốn checklist thử nghiệm đọc được trên điện thoại: **`docs/Kiem-tra-tren-dien-thoai.md`**.
 
 ## Cấu trúc thư mục
 
