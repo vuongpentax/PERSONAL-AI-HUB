@@ -1,0 +1,67 @@
+# =============================================================================
+# LiteLLM - Bộ điều phối AI (API Gateway)
+# Nguyên tắc: Open WebUI chỉ nói chuyện với LiteLLM.
+#             LiteLLM quyết định gọi model nào, và tự chuyển sang model khác khi lỗi.
+#
+# Người dùng chỉ cần chọn 2 tên chính trong Open WebUI:
+#   - main  : chat, viết, tìm hiểu (Gemini -> Groq -> OpenRouter -> Ollama)
+#   - code  : viết và sửa code (Ollama trước để tiết kiệm quota, cloud khi Ollama tắt)
+#
+# LƯU Ý QUAN TRỌNG: tên model của nhà cung cấp thay đổi theo thời gian.
+# Trước khi dùng, kiểm tra lại tên model trong tài liệu chính thức và sửa dòng "model:".
+# Tên model Ollama phải trùng với kết quả lệnh: ollama list
+# =============================================================================
+
+model_list:
+  # ---------- Nhóm đám mây (miễn phí, có giới hạn lượt dùng) ----------
+  - model_name: gemini-flash
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: groq-llama
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: openrouter-free
+    litellm_params:
+      model: openrouter/meta-llama/llama-3.3-70b-instruct:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # ---------- Nhóm local (Ollama trên chính máy bạn, không tốn quota) ----------
+  - model_name: ollama-general
+    litellm_params:
+      model: ollama/qwen2.5:14b
+      api_base: os.environ/OLLAMA_BASE_URL
+
+  - model_name: ollama-coder
+    litellm_params:
+      model: ollama/qwen2.5-coder:14b
+      api_base: os.environ/OLLAMA_BASE_URL
+
+  # ---------- Tên gọi chính (Open WebUI dùng các tên này) ----------
+  - model_name: main
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: code
+    litellm_params:
+      model: ollama/qwen2.5-coder:14b
+      api_base: os.environ/OLLAMA_BASE_URL
+
+litellm_settings:
+  drop_params: true
+
+router_settings:
+  num_retries: 2          # thử lại 2 lần trước khi chuyển model
+  timeout: 60             # quá 60 giây không trả lời thì coi là lỗi
+  allowed_fails: 2        # lỗi 2 lần liên tiếp thì tạm "nghỉ" model đó
+  cooldown_time: 60       # thời gian nghỉ (giây) trước khi thử lại
+  fallbacks:
+    - {"main": ["groq-llama", "openrouter-free", "ollama-general"]}
+    - {"code": ["openrouter-free", "groq-llama", "gemini-flash"]}
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

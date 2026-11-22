@@ -1,0 +1,97 @@
+name: Validate Personal AI Platform
+
+# Chạy khi có thay đổi trong thư mục personal-ai-platform
+on:
+  push:
+    paths:
+      - "personal-ai-platform/**"
+      - ".github/workflows/validate.yml"
+  pull_request:
+    paths:
+      - "personal-ai-platform/**"
+      - ".github/workflows/validate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-config:
+    name: YAML, Compose, bí mật
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: personal-ai-platform
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài Python và PyYAML
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml==6.0.2
+
+      - name: Chạy kiểm tra cấu hình (validate_config.py)
+        run: python scripts/validate_config.py
+
+      - name: Kiểm tra YAML lần nữa bằng yamllint (chỉ cảnh báo)
+        continue-on-error: true
+        run: |
+          pip install yamllint==1.35.1
+          yamllint -d "{extends: relaxed, rules: {line-length: disable}}" .
+
+  lint-powershell:
+    name: Kiểm tra cú pháp PowerShell
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: personal-ai-platform
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài PSScriptAnalyzer
+        run: Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.22.0 -Force -Scope CurrentUser
+
+      - name: Phân tích lỗi nghiêm trọng
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path scripts -Recurse -Severity Error
+          if ($results) {
+            $results | Format-Table -AutoSize | Out-String | Write-Host
+            throw "PSScriptAnalyzer tìm thấy lỗi nghiêm trọng"
+          }
+          Write-Host "Không có lỗi nghiêm trọng"
+
+      - name: Kiểm tra cú pháp (parser)
+        run: |
+          $failed = $false
+          Get-ChildItem -Path scripts -Filter *.ps1 | ForEach-Object {
+            $tokens = $null; $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors) { $failed = $true; $errors | ForEach-Object { Write-Host "$($_.Extent.File): $($_.Message)" } }
+          }
+          if ($failed) { throw "Có lỗi cú pháp PowerShell" }
+          Write-Host "Cú pháp PowerShell hợp lệ"
+
+  backup-config-snapshot:
+    name: Ảnh chụp cấu hình (không chứa bí mật)
+    runs-on: ubuntu-latest
+    needs: validate-config
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Đóng gói cấu hình (loại trừ .env, backups)
+        working-directory: personal-ai-platform
+        run: |
+          tar czf config-snapshot.tar.gz \
+            docker-compose.yml .env.example infrastructure agents prompts docs scripts
+      - name: Lưu ảnh chụp (giữ 14 ngày)
+        uses: actions/upload-artifact@v4
+        with:
+          name: config-snapshot
+          path: personal-ai-platform/config-snapshot.tar.gz
+          retention-days: 14

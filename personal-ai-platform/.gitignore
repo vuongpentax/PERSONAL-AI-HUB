@@ -1,0 +1,16 @@
+# Bí mật: KHÔNG bao giờ commit
+.env
+*.key
+*.pem
+
+# Dữ liệu sao lưu: chứa lịch sử chat, KHÔNG đưa lên GitHub
+backups/*.7z
+backups/*.tar.gz
+backups/staging/
+backups/restore-tmp/
+
+# Log và dữ liệu tạm
+logs/
+*.log
+.DS_Store
+Thumbs.db
